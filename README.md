@@ -8,7 +8,7 @@ Communication between the user and the AP/verifier follows the steps below, as d
 
 1. [beacon] AP sends a UDP ping packet to the user on port 1832 (the birthyear of Lewis Carroll!), containing the sequence identifier, `seqid`
 2. [m1] User sends back a `SignedProofReq` protobuf to the AP, which contains the user ID `uid`, user nonce `unonce`, sequence ID `seqid`, and verifier ID `vid`
-3. [m2] AP verifies that the sequence ID sent by user matches the one the AP sent in its ping and then sends a `ProofResp` protobuf to the user, which contains the user ID `uid` and the user nonce `unonce`
+3. [m2] AP verifies that the sequence ID sent by user matches the one the AP sent in its ping and then sends a `SignedProofResp` protobuf to the user, which contains the user ID `uid` and the user nonce `unonce`
 4. User sends periodic packets to the AP via the phone's hotspot
 5. [Locn_proof] AP generates location proof based on the packets and sends a `SignedLocnProof` protobuf to the user, which contains the vault key `vault_key`, user id `uid`, user nonce `unonce`, AP nonce `apnonce`, and sending time `time`
 6. [Locn_proof] User sends the location proof to the verifier in order to verify the location claim
