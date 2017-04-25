@@ -26,10 +26,7 @@ public class VerifyLocationActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.get_ping);
-        progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("Looking for verifier...");
 
-        // Get user key name from intent
         Intent intent = getIntent();
         userKeyName = intent.getStringExtra("userKeyName");
 
@@ -40,13 +37,19 @@ public class VerifyLocationActivity extends Activity {
             publicKey = keyStore.getCertificate(userKeyName).getPublicKey();
         } catch (Exception e) { /* NO EXCEPTION EXPECTED */ }
 
-        // Call verifyLocation(view) to initiate communication with AP
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage(getResources().getString(R.string.progress_msg));
+
+        try {
+            verifyLocation();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    // NOT BEING CALLED ANYWHERE YET
-    public void verifyLocation(View view) throws IOException {
+    public void verifyLocation() throws IOException {
         progressDialog.show();
-        URL url = new URL("localhost:8080");
+        URL url = new URL(getResources().getString(R.string.server_url));
         HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
         try {
             InputStream in = new BufferedInputStream(urlConnection.getInputStream());
