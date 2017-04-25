@@ -19,7 +19,7 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        Button getPingBtn = (Button) findViewById(R.id.get_ping);
+        Button getPingBtn = (Button) findViewById(R.id.button);
         getPingBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

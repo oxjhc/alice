@@ -3,7 +3,6 @@ package ioana.simple;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.os.Bundle;
-import android.view.View;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -20,12 +19,17 @@ public class GetPingActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.get_ping);
         progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("Looking for verifier...");
+        progressDialog.setMessage(getResources().getString(R.string.progress_msg));
+        try {
+            getPing();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public void getPing(View view) throws IOException {
+    public void getPing() throws IOException {
         progressDialog.show();
-        URL url = new URL("localhost:8080");
+        URL url = new URL(getResources().getString(R.string.server_url));
         HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
         try {
             InputStream in = new BufferedInputStream(urlConnection.getInputStream());
