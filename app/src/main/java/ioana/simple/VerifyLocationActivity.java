@@ -6,13 +6,18 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.MessageLite;
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.HttpURLConnection;
+import java.net.Socket;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
@@ -59,22 +64,31 @@ public class VerifyLocationActivity extends Activity {
 
     public void verifyLocation() throws IOException {
         progressDialog.show();
-        URL url = new URL(getResources().getString(R.string.server_url));
-        HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+        /*URL urlX = new URL(getResources().getString(R.string.server_url));
+        HttpURLConnection urlConnection = (HttpURLConnection) urlX.openConnection();
         try {
             InputStream in = new BufferedInputStream(urlConnection.getInputStream());
         } finally {
             urlConnection.disconnect();
-        }
+        }*/
 
-        DatagramSocket socket = new DatagramSocket(AP_PORT);
+        DatagramSocket datagramSocket = new DatagramSocket(AP_PORT);
+        URL url = new URL("http://" + datagramSocket.getInetAddress().getHostAddress());
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        InputStream fromAP = new BufferedInputStream(connection.getInputStream());
+        OutputStream toAP = new BufferedOutputStream(connection.getOutputStream());
 
-        int seqid = getSeqId(socket);
-        sendProofReq(socket, seqid);
+        int seqid = receiveSeqId(datagramSocket);
+        sendProofReq(toAP, seqid);
+        receiveProofResp(fromAP);
+
+        // DO OTHER COMMUNICATIONS
+
+        connection.disconnect();
     }
 
-    // Receive sequence id from AP
-    public int getSeqId(DatagramSocket socket) {
+    /** Return sequence id, which is received from the AP */
+    public int receiveSeqId(DatagramSocket socket) {
         try {
             byte[] buf = new byte[8];
             DatagramPacket packet = new DatagramPacket(buf, 8);
@@ -86,7 +100,8 @@ public class VerifyLocationActivity extends Activity {
         }
     }
 
-    public void sendProofReq(DatagramSocket socket, int seqid) {
+    /** Send SignedProofReq proto to AP */
+    public void sendProofReq(OutputStream toAP, int seqid) {
         byte[] encodedPublicKey = publicKey.getEncoded();
         byte[] unonce = new byte[10];
         new Random().nextBytes(unonce);
@@ -111,9 +126,17 @@ public class VerifyLocationActivity extends Activity {
                         .setProofreq(proofReq)
                         .setSig(ByteString.copyFrom(sig))
                     .build();
-            byte[] signedProofReqBytes = signedProofReq.toByteArray();
-            DatagramPacket signedProofReqMessage = new DatagramPacket(signedProofReqBytes, signedProofReqBytes.length, socket.getInetAddress(), AP_PORT);
-            socket.send(signedProofReqMessage);
+            toAP.write(signedProofReq.toByteArray());
+            toAP.flush();
+            toAP.close();
         } catch (Exception e) {}
+    }
+
+    public void receiveProofResp(InputStream fromAP) {
+
+    }
+
+    public void receivePings() {
+        // set up Wifi direct
     }
 }
