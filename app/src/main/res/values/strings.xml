@@ -2,6 +2,6 @@
     <string name="app_name">Alice</string>
     <string name="action_settings">Settings</string>
     <string name="verify_btn">Verify my location</string>
-    <string name="server_url">localhost:8080</string>
+    <string name="server_url">http://10.0.2.2:8080/proof</string>
     <string name="progress_msg">Looking for verifier…</string>
 </resources>
