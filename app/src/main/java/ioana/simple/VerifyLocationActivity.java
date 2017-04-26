@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -45,6 +44,7 @@ public class VerifyLocationActivity extends Activity {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
 
     public void verifyLocation() throws IOException {
