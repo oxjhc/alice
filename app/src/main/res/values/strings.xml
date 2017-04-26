@@ -4,4 +4,5 @@
     <string name="verify_btn">Verify my location</string>
     <string name="server_url">localhost:8080</string>
     <string name="progress_msg">Looking for verifier…</string>
+    <string name="vid">S99999999</string>
 </resources>

@@ -22,6 +22,7 @@ import java.security.spec.ECGenParameterSpec;
 public class MainActivity extends AppCompatActivity {
 
     private final String USER_KEY_NAME = "userKey";
+    private KeyPair keyPair = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,9 +66,7 @@ public class MainActivity extends AppCompatActivity {
                                 .setUserAuthenticationRequired(true)
                                 .setUserAuthenticationValidityDurationSeconds(5 * 60 /* seconds */)
                                 .build());
-                KeyPair keyPair = keyPairGenerator.generateKeyPair();
-                Signature signature = Signature.getInstance("SHA256withECDSA");
-                signature.initSign(keyPair.getPrivate());
+                keyPair = keyPairGenerator.generateKeyPair();
             }
         } catch (Exception e) { /* NO EXCEPTION EXPECTED */ }
     }
@@ -75,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     public void verifyLocation(View view) {
         Intent intent = new Intent(this, VerifyLocationActivity.class);
         intent.putExtra("userKeyName", USER_KEY_NAME);
+        intent.putExtra("keyPair", keyPair);
         startActivity(intent);
     }
 
