@@ -5,6 +5,8 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.wifi.WpsInfo;
+import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager.ActionListener;
@@ -32,7 +34,8 @@ public class VerifyLocationActivity extends Activity {
     public static final String TAG = "VerifyLocationActivity";
 
     private final int AP_PORT = 1832;
-    private final String AP_SERVICE_URN = "urn:schemas-oxjhc-club:service:Rabbits:1";
+    private final String AP_SERVICE_URN = "urn:schemas-oxjhc-club:service:TeaParty:1";
+    private WifiP2pDevice apDevice = null;
 
     ProgressDialog progressDialog;
 
@@ -69,8 +72,7 @@ public class VerifyLocationActivity extends Activity {
         manager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         channel = manager.initialize(this, getMainLooper(), null);
 
-        createWiFiDirectGroup();
-        discoverServiceFromAP();
+        verifyLocation();
 
         // TODO: After group creation and service discovery are both finished, connect to peers
 
@@ -112,15 +114,18 @@ public class VerifyLocationActivity extends Activity {
         UpnpServiceResponseListener upnpListener = new UpnpServiceResponseListener() {
             @Override
             public void onUpnpServiceAvailable(List<String> uniqueServiceNames, WifiP2pDevice srcDevice) {
-                    // TODO: Find service of the form "urn:schemas-oxjhc-club:service:Rabbits:1"
-                    if (uniqueServiceNames.size() > 0) {
-                        for (String name : uniqueServiceNames) {
-                            Log.d(TAG, "Found service: " + name);
-                        }
-                        clearServiceRequests();
-                    } else {
-                        Log.d(TAG, "No service found");
+                // TODO: Find service of the form "urn:schemas-oxjhc-club:service:TeaParty:1"
+
+                if (uniqueServiceNames.size() > 0) {
+                    for (String name : uniqueServiceNames) {
+                        Log.d(TAG, "Found service: " + name);
+                        apDevice = srcDevice;
                     }
+                    clearServiceRequests();
+                    connectToAP();
+                } else {
+                    Log.d(TAG, "No service found");
+                }
             }
         };
 
@@ -145,10 +150,27 @@ public class VerifyLocationActivity extends Activity {
         // 3. Discover service
         manager.discoverServices(channel, new ActionListener() {
             @Override
-            public void onSuccess() { Log.d(TAG, "Successfully discovered services"); }
+            public void onSuccess() { Log.d(TAG, "Successfully initiated service discovery"); }
 
             @Override
-            public void onFailure(int code) { logFailureMessage("discover services", code); }
+            public void onFailure(int code) { logFailureMessage("initiate service discovery", code); }
+        });
+    }
+
+    public void connectToAP() {
+        WifiP2pConfig config = new WifiP2pConfig();
+        config.deviceAddress = apDevice.deviceAddress;
+        config.wps.setup = WpsInfo.PBC;
+        config.groupOwnerIntent = 15; // highest inclination to be the group owner
+
+        manager.connect(channel, config, new ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "Successfully connected to AP (status: " + apDevice.status + ")");
+            }
+
+            @Override
+            public void onFailure(int code) { logFailureMessage("connect to AP", code); }
         });
     }
 
@@ -187,7 +209,10 @@ public class VerifyLocationActivity extends Activity {
     }
 
     public void verifyLocation() {
-        progressDialog.show();
+        //progressDialog.show();
+        createWiFiDirectGroup();
+        discoverServiceFromAP();
+        //connectToAP();
 
 //        DatagramSocket datagramSocket = new DatagramSocket(AP_PORT);
 //        URL url = new URL("http://" + datagramSocket.getInetAddress().getHostAddress());
@@ -218,34 +243,34 @@ public class VerifyLocationActivity extends Activity {
 
     /** Send SignedProofReq proto to AP */
     public void sendProofReq(OutputStream toAP, int seqid) {
-        byte[] encodedPublicKey = publicKey.getEncoded();
-        byte[] unonce = new byte[10];
-        new Random().nextBytes(unonce);
-
-        ProofProtos.ProofReq proofReq = ProofProtos.ProofReq.getDefaultInstance();
-        proofReq
-                .toBuilder()
-                    .setUid(ByteString.copyFrom(encodedPublicKey))
-                    .setUnonce(ByteString.copyFrom(unonce))
-                    .setSeqid(seqid)
-                    .setVid(ByteString.copyFromUtf8(getResources().getString(R.string.vid)))
-                . build();
-
-        try {
-            Signature signature = Signature.getInstance("SHA256withECDSA");
-            signature.initSign(privateKey);
-            signature.update(proofReq.toByteArray());
-            byte[] sig = signature.sign();
-            ProofProtos.SignedProofReq signedProofReq = ProofProtos.SignedProofReq.getDefaultInstance();
-            signedProofReq
-                    .toBuilder()
-                        .setProofreq(proofReq)
-                        .setSig(ByteString.copyFrom(sig))
-                    .build();
-            toAP.write(signedProofReq.toByteArray());
-            toAP.flush();
-            toAP.close();
-        } catch (Exception e) {}
+//        byte[] encodedPublicKey = publicKey.getEncoded();
+//        byte[] unonce = new byte[10];
+//        new Random().nextBytes(unonce);
+//
+//        ProofProtos.ProofReq proofReq = ProofProtos.ProofReq.getDefaultInstance();
+//        proofReq
+//                .toBuilder()
+//                    .setUid(ByteString.copyFrom(encodedPublicKey))
+//                    .setUnonce(ByteString.copyFrom(unonce))
+//                    .setSeqid(seqid)
+//                    .setVid(ByteString.copyFromUtf8(getResources().getString(R.string.vid)))
+//                . build();
+//
+//        try {
+//            Signature signature = Signature.getInstance("SHA256withECDSA");
+//            signature.initSign(privateKey);
+//            signature.update(proofReq.toByteArray());
+//            byte[] sig = signature.sign();
+//            ProofProtos.SignedProofReq signedProofReq = ProofProtos.SignedProofReq.getDefaultInstance();
+//            signedProofReq
+//                    .toBuilder()
+//                        .setProofreq(proofReq)
+//                        .setSig(ByteString.copyFrom(sig))
+//                    .build();
+//            toAP.write(signedProofReq.toByteArray());
+//            toAP.flush();
+//            toAP.close();
+//        } catch (Exception e) {}
     }
 
 
