@@ -1,0 +1,76 @@
+syntax = "proto2";
+
+option java_package = "ioana.simple";
+option java_outer_classname = "ProofProtos";
+
+// m1
+message ProofReq {
+	required bytes uid = 1;
+	required bytes unonce = 2;
+	required int64 seqid = 3;
+	required bytes vid = 4;
+}
+
+message SignedProofReq {
+	required ProofReq proofreq = 1;
+	required bytes sig = 2;
+}
+
+// m2
+message ProofResp {
+	required bytes uid = 1;
+	required bytes unonce = 2;
+}
+
+message SignedProofResp {
+	required ProofResp proofresp = 1;
+	required bytes sig = 2;
+}
+
+//m4
+message VaultMsg {
+	message Vault {
+		message Point {
+			required uint32 x = 1;
+			required uint32 y = 2;
+		}
+		repeated Point points = 1;
+	}
+	required Vault vault = 1;
+	required bytes uid = 2;
+	required bytes unonce = 3;
+	required bytes apid = 4;
+	required bytes apnonce = 5;
+	required fixed64 time = 6;
+}
+
+message SignedVaultMsg {
+	required VaultMsg vault_msg = 1;
+	required bytes sig = 2;
+}
+
+// m3
+message LocnProof {
+	required bytes vault_key = 1;
+	required bytes uid = 2;
+	required bytes unonce = 3;
+	required bytes apid = 4;
+	required bytes apnonce = 5;
+	required fixed64 time = 6;
+}
+
+message SignedLocnProof {
+	required LocnProof locnproof = 1;
+	required bytes sig = 2;
+}
+
+// m5
+message Token {
+	required bytes vnonce = 1;
+	required bytes locn_tag = 2;
+}
+
+message SignedToken {
+	required Token token = 1;
+	required bytes sig = 2;
+}
