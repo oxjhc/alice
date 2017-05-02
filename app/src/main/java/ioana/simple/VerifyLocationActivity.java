@@ -8,20 +8,29 @@ import android.content.IntentFilter;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager.ActionListener;
 import android.net.wifi.p2p.WifiP2pManager.UpnpServiceResponseListener;
 import android.net.wifi.p2p.nsd.WifiP2pUpnpServiceRequest;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.protobuf.ByteString;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.PrivateKey;
@@ -166,7 +175,49 @@ public class VerifyLocationActivity extends Activity {
         manager.connect(channel, config, new ActionListener() {
             @Override
             public void onSuccess() {
-                Log.d(TAG, "Successfully connected to AP (status: " + apDevice.status + ")");
+                String status = "";
+
+                switch (apDevice.status) {
+                    case WifiP2pDevice.AVAILABLE:
+                        status = "AVAILABLE";
+                        break;
+                    case WifiP2pDevice.CONNECTED:
+                        status = "CONNECTED";
+                        break;
+                    case WifiP2pDevice.FAILED:
+                        status = "FAILED";
+                        break;
+                    case WifiP2pDevice.INVITED:
+                        status = "INVITED";
+                        break;
+                    case WifiP2pDevice.UNAVAILABLE:
+                        status = "UNAVAILABLE";
+                        break;
+                    default:
+                        status = "SOMETHING WEIRD HAPPENED";
+                        break;
+                }
+
+                Log.d(TAG, "Successfully connected to AP (status: " + status + ")");
+
+                manager.requestConnectionInfo(channel, new WifiP2pManager.ConnectionInfoListener() {
+                    @Override
+                    public void onConnectionInfoAvailable(WifiP2pInfo info) {
+                        InetAddress ownerAddress=info.groupOwnerAddress;
+
+                        if (ownerAddress!=null) {
+                            Log.d(TAG, "Group owner address: " + ownerAddress.toString());
+                        } else {
+                            Log.d(TAG, "Connection failed! Try again!");
+                        }
+
+                        if (info.groupFormed) {
+                            Log.d(TAG, "Group formed");
+                        } else {
+                            Log.d(TAG, "Failed to form group");
+                        }
+                    }
+                });
             }
 
             @Override
@@ -208,24 +259,39 @@ public class VerifyLocationActivity extends Activity {
         });
     }
 
+    public void getPingFromAP() {
+        try {
+            DatagramSocket datagramSocket = new DatagramSocket(AP_PORT);
+
+            Log.d(TAG, "Socket is connected: " + datagramSocket.isConnected());
+
+//            URL url = new URL("http://" + datagramSocket.getInetAddress().getHostAddress());
+//            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+//            InputStream fromAP = new BufferedInputStream(connection.getInputStream());
+//            OutputStream toAP = new BufferedOutputStream(connection.getOutputStream());
+
+            int seqid = receiveSeqId(datagramSocket);
+
+            Log.d(TAG, "Received seqid: " + seqid);
+
+//            sendProofReq(toAP, seqid);
+//
+//            // DO OTHER COMMUNICATIONS
+//
+//            connection.disconnect();
+        } catch (Exception e) {
+            Log.d(TAG, e.getClass().toString());
+        }
+    }
+
     public void verifyLocation() {
         //progressDialog.show();
         createWiFiDirectGroup();
         discoverServiceFromAP();
-        //connectToAP();
+        getPingFromAP();
 
-//        DatagramSocket datagramSocket = new DatagramSocket(AP_PORT);
-//        URL url = new URL("http://" + datagramSocket.getInetAddress().getHostAddress());
-//        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-//        InputStream fromAP = new BufferedInputStream(connection.getInputStream());
-//        OutputStream toAP = new BufferedOutputStream(connection.getOutputStream());
-//
-//        int seqid = receiveSeqId(datagramSocket);
-//        sendProofReq(toAP, seqid);
-//
-//        // DO OTHER COMMUNICATIONS
-//
-//        connection.disconnect();
+
+
     }
 
     /** Return sequence id, which is received from the AP */
@@ -236,7 +302,6 @@ public class VerifyLocationActivity extends Activity {
             socket.receive(packet);
             return ByteBuffer.wrap(packet.getData()).getInt();
         } catch (Exception e) {
-            // HOPE THIS DOESN'T HAPPEN
             return -1;
         }
     }
