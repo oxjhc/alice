@@ -73,8 +73,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void verifyLocation(View view) {
         Intent intent = new Intent(this, VerifyLocationActivity.class);
-        intent.putExtra("userKeyName", USER_KEY_NAME);
-        intent.putExtra("keyPair", keyPair);
+//        intent.putExtra("userKeyName", USER_KEY_NAME);
+//        intent.putExtra("keyPair", keyPair);
         startActivity(intent);
     }
 
