@@ -7,6 +7,7 @@ import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -32,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        Log.d("MAIN", "Checking keypiar.");
         checkKeyPairExists();
 
         Button getVerifyLocationBtn = (Button) findViewById(R.id.verify_location);
@@ -57,10 +59,8 @@ public class MainActivity extends AppCompatActivity {
                         new KeyGenParameterSpec.Builder(
                                 USER_KEY_NAME,
                                 KeyProperties.PURPOSE_SIGN)
-                                .setAlgorithmParameterSpec(new ECGenParameterSpec("secp256r1"))
-                                .setDigests(KeyProperties.DIGEST_SHA256,
-                                        KeyProperties.DIGEST_SHA384,
-                                        KeyProperties.DIGEST_SHA512)
+                                .setAlgorithmParameterSpec(new ECGenParameterSpec("prime256v1"))
+                                .setDigests(KeyProperties.DIGEST_SHA256)
                                 // Only permit the private key to be used if the user authenticated
                                 // within the last five minutes.
                                 .setUserAuthenticationRequired(true)
@@ -73,8 +73,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void verifyLocation(View view) {
         Intent intent = new Intent(this, VerifyLocationActivity.class);
-//        intent.putExtra("userKeyName", USER_KEY_NAME);
-//        intent.putExtra("keyPair", keyPair);
+        intent.putExtra("userKeyName", USER_KEY_NAME);
         startActivity(intent);
     }
 
