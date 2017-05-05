@@ -32,11 +32,16 @@ import java.net.MulticastSocket;
 import java.net.SocketException;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.SignatureException;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -53,12 +58,13 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
     private WifiP2pManager.Channel channel;
     private PublicKey publicKey;
     private PrivateKey privateKey;
-    private String vid;
+    private ByteString vid;
     private Activity activity;
 
     private final Lock lock = new ReentrantLock();
     private final Condition pingCond = lock.newCondition();
     private boolean failed = false;
+    private boolean ready = false;
 
     public VerifyLocationTask(
             WifiP2pManager manager,
@@ -66,14 +72,18 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
             WifiP2pManager.Channel channel,
             PublicKey publicKey,
             PrivateKey privateKey,
-            String vid,
+            InputStream vid,
             Activity activity) {
         this.manager = manager;
         this.wifiManager = wifiManager;
         this.channel = channel;
         this.publicKey = publicKey;
         this.privateKey = privateKey;
-        this.vid = vid;
+        try {
+            this.vid = ByteString.readFrom(vid);
+        } catch (IOException e) {
+            this.vid = null;
+        }
         this.activity = activity;
     }
 
@@ -271,6 +281,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
 
                         lock.lock();
                         try {
+                            ready = true;
                             pingCond.signal();
                         } finally {
                             lock.unlock();
@@ -288,30 +299,50 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
     }
 
     public void getPingFromAP() {
+        Boolean notElapsed = true;
+        long timeout = TimeUnit.SECONDS.toNanos(10);
         lock.lock();
         try {
-            pingCond.await();
+            while (timeout >= 0) {
+                timeout = pingCond.awaitNanos(timeout);
+            }
         } catch (InterruptedException e) {
             if (isCancelled()) {
-                Log.d(TAG, "Ping exiting, task cancelled");
+                Log.d(TAG, "Ping exiting, task cancelled.");
+                // No tear down, done in onCancellable
+                return;
+            } else if (notElapsed) {
+                Log.d(TAG, "Ping did not time out, something odd happened.");
+                cancel(true);
+                return;
+            } else {
+                Log.d(TAG, "SOMETHING WEIRD HAPPENED.");
+                cancel(true);
                 return;
             }
-            Log.d(TAG, "IT'S ALL GONE WRONG!");
-            return;
         } finally {
             lock.unlock();
         }
 
-        if (failed) {return;}
+        if (failed) {
+            Log.d(TAG, "Failed.");
+            return;
+        } else if (timeout < 0) {
+            Log.d(TAG, "Ping timed out.");
+            cancel(true);
+            return;
+        }
 
         Log.d(TAG, "Getting ping from AP.");
 
         DatagramSocket socket;
         try {
             socket = new DatagramSocket(AP_PORT);
+            socket.setSoTimeout(10000);
         } catch (SocketException e) {
             Log.d(TAG, "Socket error.");
             e.printStackTrace();
+            tearDownWifiDirect();
             return;
         }
 
@@ -321,42 +352,57 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
 
         try {
             Log.d(TAG, "Waiting for seqids.");
-            for (int i = 0; i < 1; i++) {
-                socket.receive(packet);
-                seqid = ByteBuffer.wrap(packet.getData()).getLong();
-                Log.d(TAG, "Received seqid: " + seqid);
-            }
+            socket.receive(packet);
+            seqid = ByteBuffer.wrap(packet.getData()).getLong();
+            Log.d(TAG, "Received seqid: " + seqid);
         } catch (IOException e) {
             Log.d(TAG, "Error receiving seqids.");
             e.printStackTrace();
-            return;
-        } finally {
             socket.close();
+            tearDownWifiDirect();
+            return;
         }
 
         String baseUrl = "http://" + packet.getAddress().getHostAddress() + ":80";
-        HttpURLConnection connection;
-        try {
-            URL url = new URL(baseUrl + "/proof_req");
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setDoOutput(true);
-            connection.setDoInput(true);
-            connection.setRequestMethod("POST");
-            connection.setChunkedStreamingMode(0);
-        } catch (IOException e) {
-            Log.d(TAG, "URL error.");
-            e.printStackTrace();
-            socket.close();
-            return;
-        }
+        URL url;
+        HttpURLConnection connection = null;
 
         try {
-            OutputStream toAP = new BufferedOutputStream(connection.getOutputStream());
+            try {
+                url = new URL(baseUrl + "/proof_req");
+            } catch (IOException e) {
+                Log.d(TAG, "URL error.");
+                e.printStackTrace();
+                socket.close();
+                tearDownWifiDirect();
+                return;
+            }
 
-            Log.d(TAG, "Creating proof req.");
-            sendProofReq(toAP, seqid);
+            do {
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setDoOutput(true);
+                connection.setDoInput(true);
+                connection.setRequestMethod("POST");
+                connection.setChunkedStreamingMode(0);
 
-//            Log.d(TAG, "Code: " + connection.getResponseCode());
+                OutputStream toAP = new BufferedOutputStream(connection.getOutputStream());
+
+                try {
+                    Log.d(TAG, "Waiting for seqid.");
+                    socket.receive(packet);
+                    seqid = ByteBuffer.wrap(packet.getData()).getLong();
+                    Log.d(TAG, "Received seqid: " + seqid);
+                } catch (IOException e) {
+                    Log.d(TAG, "Error receiving seqids.");
+                    e.printStackTrace();
+                    socket.close();
+                    return;
+                }
+                Log.d(TAG, "Creating proof req.");
+                sendProofReq(toAP, seqid);
+                // Keep sending request until 200 OK received
+                Log.d(TAG, "Code: " + connection.getResponseCode());
+            } while (connection.getResponseCode() != 200);
 
             InputStream fromAP = new BufferedInputStream(connection.getInputStream());
 
@@ -367,13 +413,17 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
         } catch (Exception e) {
             Log.d(TAG, "Error in getting ping: " + e);
             e.printStackTrace();
+            tearDownWifiDirect();
+            return;
         } finally {
-            connection.disconnect();
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
 
         ProofProtos.SignedLocnProof locnProof;
         try {
-            URL url = new URL(baseUrl + "/proof");
+            url = new URL(baseUrl + "/proof");
 
             while (true) {
                 Log.d(TAG, "Sending to /proof.");
@@ -393,13 +443,22 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
         } catch (IOException e) {
             Log.d(TAG, "Error in getting proof: " + e);
             e.printStackTrace();
+            tearDownWifiDirect();
+            return;
         } finally {
             connection.disconnect();
         }
 
+        tearDownWifiDirect();
     }
 
     public void tearDownWifiDirect() {
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         Log.d(TAG, "Tearing down WiFi direct");
         manager.clearServiceRequests(channel, new WifiP2pManager.ActionListener() {
             @Override
@@ -434,10 +493,19 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
                 });
             }
         });
+
+        lock.lock();
+        try {
+            ready = true;
+            failed = true;
+            pingCond.signal();
+        } finally {
+            lock.unlock();
+        }
     }
 
     /** Send SignedProofReq proto to AP */
-    public void sendProofReq(OutputStream toAP, long seqid) {
+    public void sendProofReq(OutputStream toAP, long seqid) throws IOException {
         Log.d(TAG, "Building proof req.");
         byte[] encodedPublicKey = publicKey.getEncoded();
         byte[] unonce = new byte[10];
@@ -448,29 +516,33 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
                 .setUid(ByteString.copyFrom(encodedPublicKey))
                 .setUnonce(ByteString.copyFrom(unonce))
                 .setSeqid(seqid)
-                .setVid(ByteString.copyFromUtf8(vid))
+                .setVid(vid)
             .build();
 
         Log.d(TAG, "Proof req is: " + proofReq.toString());
 
+        byte[] sig = new byte[0];
         try {
             Signature signature = Signature.getInstance("SHA256withECDSA");
             signature.initSign(privateKey);
             signature.update(proofReq.toByteArray());
-            byte[] sig = signature.sign();
-            ProofProtos.SignedProofReq signedProofReq =
-                    ProofProtos.SignedProofReq.newBuilder()
-                        .setProofreq(proofReq)
-                        .setSig(ByteString.copyFrom(sig))
-                    .build();
-            Log.d(TAG, "Sending proof req.");
-            toAP.write(signedProofReq.toByteArray());
-            toAP.flush();
-            Log.d(TAG, "Sent proof req.");
-        } catch (Exception e) {
-            Log.d(TAG, "Error while signing: " + e.getMessage());
+            sig = signature.sign();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (SignatureException e) {
             e.printStackTrace();
         }
+        ProofProtos.SignedProofReq signedProofReq =
+                ProofProtos.SignedProofReq.newBuilder()
+                    .setProofreq(proofReq)
+                    .setSig(ByteString.copyFrom(sig))
+                .build();
+        Log.d(TAG, "Sending proof req.");
+        toAP.write(signedProofReq.toByteArray());
+        toAP.flush();
+        Log.d(TAG, "Sent proof req.");
     }
 
     public void logFailureMessage(String action, int reason) {
@@ -493,73 +565,14 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
     @Override
     protected void onCancelled() {
         super.onCancelled();
-        lock.lock();
-        try {
-            pingCond.signal();
-        } finally {
-            lock.unlock();
-        }
         Log.d(TAG, "Cancelled.");
+        tearDownWifiDirect();
+        activity.finish();
     }
 
     @Override
     protected void onPostExecute(Void o) {
         super.onPostExecute(o);
         activity.finish();
-    }
-
-
-    // COPIED
-
-    public static void setIpAssignment(String assign , WifiConfiguration wifiConf)
-            throws SecurityException, IllegalArgumentException, NoSuchFieldException, IllegalAccessException,
-            ClassNotFoundException, NoSuchMethodException, InstantiationException, InvocationTargetException {
-        Object ipConfiguration = getIpConfiguration(wifiConf);
-        setEnumField(ipConfiguration, assign, "ipAssignment");
-    }
-
-    public static void setIpAddress(InetAddress addr, int prefixLength, WifiConfiguration wifiConf)
-            throws SecurityException, IllegalArgumentException, NoSuchFieldException, IllegalAccessException,
-            ClassNotFoundException, NoSuchMethodException, InstantiationException, InvocationTargetException {
-        Object ipConfiguration = getIpConfiguration(wifiConf);
-        Object staticIpConfiguration = getDeclaredField(ipConfiguration, "staticIpConfiguration");
-        Class laClass = Class.forName("android.net.LinkAddress");
-        Constructor laConstructor = laClass.getConstructor(new Class[]{InetAddress.class, int.class});
-        Object linkAddress = laConstructor.newInstance(addr, prefixLength);
-
-        Field ipAddress = staticIpConfiguration.getClass().getField("ipAddress");
-        ipAddress.set(staticIpConfiguration, linkAddress);
-    }
-
-    public static void setGateway(InetAddress addr, WifiConfiguration wifiConf)
-            throws SecurityException, IllegalArgumentException, NoSuchFieldException, IllegalAccessException,
-            ClassNotFoundException, NoSuchMethodException, InstantiationException, InvocationTargetException {
-        Object ipConfiguration = getIpConfiguration(wifiConf);
-        Object staticIpConfiguration = getDeclaredField(ipConfiguration, "staticIpConfiguration");
-
-        Field gateway = staticIpConfiguration.getClass().getField("gateway");
-        gateway.set(staticIpConfiguration, addr);
-    }
-
-    public static Object getIpConfiguration(WifiConfiguration wifiConfiguration)
-            throws SecurityException, IllegalArgumentException, NoSuchFieldException, IllegalAccessException,
-            ClassNotFoundException, NoSuchMethodException, InstantiationException, InvocationTargetException{
-        return getDeclaredField(wifiConfiguration, "mIpConfiguration");
-    }
-
-
-    public static Object getDeclaredField(Object obj, String name)
-            throws SecurityException, NoSuchFieldException,
-            IllegalArgumentException, IllegalAccessException {
-        Field f = obj.getClass().getDeclaredField(name);
-        f.setAccessible(true);
-        Object out = f.get(obj);
-        return out;
-    }
-
-    public static void setEnumField(Object obj, String value, String name)
-            throws SecurityException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException{
-        Field f = obj.getClass().getField(name);
-        f.set(obj, Enum.valueOf((Class<Enum>) f.getType(), value));
     }
 }

@@ -66,8 +66,8 @@ public class VerifyLocationActivity extends Activity {
         progressDialog.setMessage(getResources().getString(R.string.progress_msg));
 
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        wifiManager.setWifiEnabled(false);
-        wifiManager.setWifiEnabled(true);
+//        wifiManager.setWifiEnabled(false);
+//        wifiManager.setWifiEnabled(true);
 
         manager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         channel = manager.initialize(this, getMainLooper(), null);
@@ -96,7 +96,7 @@ public class VerifyLocationActivity extends Activity {
     public void verifyLocation() {
         task = new VerifyLocationTask(
                 manager, wifiManager, channel, publicKey,
-                privateKey, getResources().getString(R.string.vid),
+                privateKey, getResources().openRawResource(R.raw.vid),
                 this).execute();
     }
 
