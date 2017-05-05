@@ -16,7 +16,6 @@ import android.widget.Button;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
-import java.security.Signature;
 import java.security.spec.ECGenParameterSpec;
 
 

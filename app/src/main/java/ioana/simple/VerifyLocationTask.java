@@ -1,8 +1,6 @@
 package ioana.simple;
 
 import android.app.Activity;
-import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
@@ -21,14 +19,10 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
-import java.net.MulticastSocket;
 import java.net.SocketException;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -41,12 +35,11 @@ import java.security.SignatureException;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
+public class VerifyLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProof> {
     public static final String TAG = "VerifyLocationTask";
 
     private final int AP_PORT = 1832;
@@ -87,16 +80,16 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
         this.activity = activity;
     }
 
-    protected Void doInBackground(Void[] params) {
+    protected ProofProtos.SignedLocnProof doInBackground(Void[] params) {
         Log.d(TAG, "Executing \"doInBackground\"");
 
         setUpWifiDirect();
 
-        getPingFromAP();
+        ProofProtos.SignedLocnProof locnProof = getPingFromAP();
 
         Log.d(TAG, "Finished executing.");
 
-        return null;
+        return locnProof;
     }
 
     public void setUpWifiDirect() {
@@ -298,27 +291,27 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
         });
     }
 
-    public void getPingFromAP() {
+    public ProofProtos.SignedLocnProof getPingFromAP() {
         Boolean notElapsed = true;
         long timeout = TimeUnit.SECONDS.toNanos(10);
         lock.lock();
         try {
-            while (timeout >= 0) {
+            while (timeout >= 0 && !ready) {
                 timeout = pingCond.awaitNanos(timeout);
             }
         } catch (InterruptedException e) {
             if (isCancelled()) {
                 Log.d(TAG, "Ping exiting, task cancelled.");
                 // No tear down, done in onCancellable
-                return;
+                return null;
             } else if (notElapsed) {
                 Log.d(TAG, "Ping did not time out, something odd happened.");
                 cancel(true);
-                return;
+                return null;
             } else {
                 Log.d(TAG, "SOMETHING WEIRD HAPPENED.");
                 cancel(true);
-                return;
+                return null;
             }
         } finally {
             lock.unlock();
@@ -326,11 +319,11 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
 
         if (failed) {
             Log.d(TAG, "Failed.");
-            return;
+            return null;
         } else if (timeout < 0) {
             Log.d(TAG, "Ping timed out.");
             cancel(true);
-            return;
+            return null;
         }
 
         Log.d(TAG, "Getting ping from AP.");
@@ -338,12 +331,12 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
         DatagramSocket socket;
         try {
             socket = new DatagramSocket(AP_PORT);
-            socket.setSoTimeout(10000);
+            socket.setSoTimeout(30000);
         } catch (SocketException e) {
             Log.d(TAG, "Socket error.");
             e.printStackTrace();
             tearDownWifiDirect();
-            return;
+            return null;
         }
 
         byte[] buf = new byte[8];
@@ -360,7 +353,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
             e.printStackTrace();
             socket.close();
             tearDownWifiDirect();
-            return;
+            return null;
         }
 
         String baseUrl = "http://" + packet.getAddress().getHostAddress() + ":80";
@@ -375,7 +368,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
                 e.printStackTrace();
                 socket.close();
                 tearDownWifiDirect();
-                return;
+                return null;
             }
 
             do {
@@ -396,7 +389,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
                     Log.d(TAG, "Error receiving seqids.");
                     e.printStackTrace();
                     socket.close();
-                    return;
+                    return null;
                 }
                 Log.d(TAG, "Creating proof req.");
                 sendProofReq(toAP, seqid);
@@ -414,7 +407,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
             Log.d(TAG, "Error in getting ping: " + e);
             e.printStackTrace();
             tearDownWifiDirect();
-            return;
+            return null;
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -444,12 +437,13 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
             Log.d(TAG, "Error in getting proof: " + e);
             e.printStackTrace();
             tearDownWifiDirect();
-            return;
+            return null;
         } finally {
             connection.disconnect();
         }
 
         tearDownWifiDirect();
+        return locnProof;
     }
 
     public void tearDownWifiDirect() {
@@ -571,7 +565,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, Void> {
     }
 
     @Override
-    protected void onPostExecute(Void o) {
+    protected void onPostExecute(ProofProtos.SignedLocnProof o) {
         super.onPostExecute(o);
         activity.finish();
     }
