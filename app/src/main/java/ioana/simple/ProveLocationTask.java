@@ -39,8 +39,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class VerifyLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProof> {
-    public static final String TAG = "VerifyLocationTask";
+public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProof> {
+    public static final String TAG = "ProveLocationTask";
 
     private final int AP_PORT = 1832;
     private final String AP_SERVICE_URN = "urn:schemas-oxjhc-club:service:TeaParty:1";
@@ -59,7 +59,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, ProofProtos.Signed
     private boolean failed = false;
     private boolean ready = false;
 
-    public VerifyLocationTask(
+    public ProveLocationTask(
             WifiP2pManager manager,
             WifiManager wifiManager,
             WifiP2pManager.Channel channel,
@@ -293,7 +293,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, ProofProtos.Signed
 
     public ProofProtos.SignedLocnProof getPingFromAP() {
         Boolean notElapsed = true;
-        long timeout = TimeUnit.SECONDS.toNanos(10);
+        long timeout = TimeUnit.SECONDS.toNanos(100);
         lock.lock();
         try {
             while (timeout >= 0 && !ready) {
@@ -328,11 +328,14 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, ProofProtos.Signed
 
         Log.d(TAG, "Getting ping from AP.");
 
-        DatagramSocket socket;
+        DatagramSocket socket = null;
         try {
             socket = new DatagramSocket(AP_PORT);
             socket.setSoTimeout(30000);
         } catch (SocketException e) {
+            if (socket != null) {
+                socket.close();
+            }
             Log.d(TAG, "Socket error.");
             e.printStackTrace();
             tearDownWifiDirect();
@@ -406,6 +409,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, ProofProtos.Signed
         } catch (Exception e) {
             Log.d(TAG, "Error in getting ping: " + e);
             e.printStackTrace();
+            socket.close();
             tearDownWifiDirect();
             return null;
         } finally {
@@ -436,6 +440,7 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, ProofProtos.Signed
         } catch (IOException e) {
             Log.d(TAG, "Error in getting proof: " + e);
             e.printStackTrace();
+            socket.close();
             tearDownWifiDirect();
             return null;
         } finally {
@@ -452,6 +457,9 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, ProofProtos.Signed
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+        Log.d(TAG, "Disabling WiFi.");
+        wifiManager.setWifiEnabled(false);
 
         Log.d(TAG, "Tearing down WiFi direct");
         manager.clearServiceRequests(channel, new WifiP2pManager.ActionListener() {
@@ -487,6 +495,9 @@ public class VerifyLocationTask extends AsyncTask<Void, Void, ProofProtos.Signed
                 });
             }
         });
+
+        Log.d(TAG, "Enabling Wifi.");
+        wifiManager.setWifiEnabled(true);
 
         lock.lock();
         try {

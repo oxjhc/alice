@@ -1,9 +1,7 @@
 package ioana.simple;
 
 import android.annotation.TargetApi;
-import android.app.Activity;
 import android.app.KeyguardManager;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -11,16 +9,17 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.MenuItem;
 
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
 @TargetApi(21)
-public class VerifyLocationActivity extends Activity {
-    public static final String TAG = "VerifyLocationActivity";
-
-    ProgressDialog progressDialog;
+public class ProveLocationActivity extends AppCompatActivity {
+    public static final String TAG = "ProveLocationActivity";
 
     private String userKeyName;
     private PublicKey publicKey;
@@ -31,15 +30,13 @@ public class VerifyLocationActivity extends Activity {
     private WiFiDirectBroadcastReceiver receiver;
 
     private final IntentFilter intentFilter = new IntentFilter();
-    private boolean isWifiP2pEnabled = false;
-    private boolean retryChannel = false;
     private AsyncTask task;
     private WifiManager wifiManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //setContentView(R.layout.get_ping);
+        setContentView(R.layout.activity_prove_location);
 
         Intent intent = getIntent();
         userKeyName = intent.getStringExtra("userKeyName");
@@ -49,15 +46,12 @@ public class VerifyLocationActivity extends Activity {
             keyStore.load(null); // Reload Android key store
             privateKey = (PrivateKey) keyStore.getKey(userKeyName, null);
             publicKey = keyStore.getCertificate(userKeyName).getPublicKey();
-        } catch (Exception e) { /* NO EXCEPTION EXPECTED */ }
-
-        progressDialog = new ProgressDialog(this);
-        //progressDialog.setMessage(getResources().getString(R.string.progress_msg));
+        } catch (Exception e) {
+            Log.d(TAG, "Key error.");
+        }
 
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-//        wifiManager.setWifiEnabled(false);
-//        wifiManager.setWifiEnabled(true);
-
+        wifiManager.
         manager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         channel = manager.initialize(this, getMainLooper(), null);
 
@@ -66,21 +60,20 @@ public class VerifyLocationActivity extends Activity {
         startActivity(kg);
 
         verifyLocation();
-        // TODO: After group creation and service discovery are both finished, connect to peers
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        receiver = new WiFiDirectBroadcastReceiver(manager, channel, this);
-        registerReceiver(receiver, intentFilter);
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        unregisterReceiver(receiver);
-    }
+//    @Override
+//    public void onResume() {
+//        super.onResume();
+//        receiver = new WiFiDirectBroadcastReceiver(manager, channel, this);
+//        registerReceiver(receiver, intentFilter);
+//    }
+//
+//    @Override
+//    public void onPause() {
+//        super.onPause();
+//        unregisterReceiver(receiver);
+//    }
 
     public void verifyLocation() {
         task = new ProveLocationTask(
@@ -89,29 +82,21 @@ public class VerifyLocationActivity extends Activity {
                 this).execute();
     }
 
-
-
-    // FROM WIFIDIRECTDEMO - PROBABLY NOT NEEDED
-
-    /**
-     * Remove all peers and clear all fields. This is called on BroadcastReceiver receiving a
-     * state change event.
-     */
-    public void resetData() {
-//        DeviceListFragment fragmentList = (DeviceListFragment) getFragmentManager()
-//                .findFragmentById(R.id.frag_list);
-//        DeviceDetailFragment fragmentDetails = (DeviceDetailFragment) getFragmentManager()
-//                .findFragmentById(R.id.frag_detail);
-//        if (fragmentList != null) {
-//            fragmentList.clearPeers();
-//        }
-//        if (fragmentDetails != null) {
-//            fragmentDetails.resetViews();
-//        }
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(R.anim.in_from_left, R.anim.out_to_right);
     }
 
-    public void setIsWifiP2pEnabled(boolean isWifiP2pEnabled) {
-//        this.isWifiP2pEnabled = isWifiP2pEnabled;
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            // Respond to the action bar's Up/Home button
+            case android.R.id.home:
+                supportFinishAfterTransition();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
