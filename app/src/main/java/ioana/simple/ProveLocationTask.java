@@ -39,8 +39,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProof> {
-    public static final String TAG = "ProveLocationTask";
+class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProof> {
+    private static final String TAG = "ProveLocationTask";
 
     private final int AP_PORT = 1832;
     private final String AP_SERVICE_URN = "urn:schemas-oxjhc-club:service:TeaParty:1";
@@ -59,7 +59,7 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
     private boolean failed = false;
     private boolean ready = false;
 
-    public ProveLocationTask(
+    ProveLocationTask(
             WifiP2pManager manager,
             WifiManager wifiManager,
             WifiP2pManager.Channel channel,
@@ -92,12 +92,12 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
         return locnProof;
     }
 
-    public void setUpWifiDirect() {
+    private void setUpWifiDirect() {
         Log.d(TAG, "Starting connection procedure.");
         setUpUpnpListener();
     }
 
-    public void setUpUpnpListener() {
+    private void setUpUpnpListener() {
         // 1. Set up service response listener
         WifiP2pManager.UpnpServiceResponseListener upnpListener = new WifiP2pManager.UpnpServiceResponseListener() {
             @Override
@@ -120,7 +120,7 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
         createWiFiDirectGroup();
     }
 
-    public void createWiFiDirectGroup() {
+    private void createWiFiDirectGroup() {
         // 2. Create WiFi direct group
         manager.requestGroupInfo(channel, new WifiP2pManager.GroupInfoListener() {
             @Override
@@ -217,7 +217,7 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
         });
     }
 
-    public void connectToAP() {
+    private void connectToAP() {
         WifiP2pConfig config = new WifiP2pConfig();
         config.deviceAddress = apDevice.deviceAddress;
         config.wps.setup = WpsInfo.PBC;
@@ -226,7 +226,7 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
         manager.connect(channel, config, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                String status = "";
+                String status;
 
                 switch (apDevice.status) {
                     case WifiP2pDevice.AVAILABLE:
@@ -291,7 +291,7 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
         });
     }
 
-    public ProofProtos.SignedLocnProof getPingFromAP() {
+    private ProofProtos.SignedLocnProof getPingFromAP() {
         Boolean notElapsed = true;
         long timeout = TimeUnit.SECONDS.toNanos(100);
         lock.lock();
@@ -451,7 +451,7 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
         return locnProof;
     }
 
-    public void tearDownWifiDirect() {
+    private void tearDownWifiDirect() {
         try {
             Thread.sleep(100);
         } catch (InterruptedException e) {
@@ -510,7 +510,7 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
     }
 
     /** Send SignedProofReq proto to AP */
-    public void sendProofReq(OutputStream toAP, long seqid) throws IOException {
+    private void sendProofReq(OutputStream toAP, long seqid) throws IOException {
         Log.d(TAG, "Building proof req.");
         byte[] encodedPublicKey = publicKey.getEncoded();
         byte[] unonce = new byte[10];
@@ -550,7 +550,7 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
         Log.d(TAG, "Sent proof req.");
     }
 
-    public void logFailureMessage(String action, int reason) {
+    private void logFailureMessage(String action, int reason) {
         switch (reason) {
             case WifiP2pManager.P2P_UNSUPPORTED :
                 Log.d(TAG, "Failed to " + action + " because P2P isn't supported on this device");
@@ -577,7 +577,7 @@ public class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedL
 
     @Override
     protected void onPostExecute(ProofProtos.SignedLocnProof o) {
-        super.onPostExecute(o);
+        Singleton.getInstance().addToList(o);
         activity.finish();
     }
 }

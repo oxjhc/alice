@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.app.ActivityOptions;
 import android.app.Dialog;
 import android.app.DialogFragment;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.security.keystore.KeyGenParameterSpec;
@@ -24,9 +25,10 @@ import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.Toast;
 import android.widget.ViewFlipper;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -44,6 +46,8 @@ public class MainActivity extends AppCompatActivity {
     private Animation fade_out;
     private Menu menu;
     private ListView proofList;
+    private ProgressDialog progressDialog;
+    private android.app.AlertDialog.Builder alertDialog;
 
     private final String USER_KEY_NAME = "userKey";
     private KeyPair keyPair = null;
@@ -57,6 +61,9 @@ public class MainActivity extends AppCompatActivity {
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
         navigation.setOnNavigationItemReselectedListener(mOnNavigationItemReselectedListener);
         menu = navigation.getMenu();
+
+        progressDialog = new ProgressDialog(this);
+        alertDialog = new android.app.AlertDialog.Builder(this).setCancelable(true);
 
         mFlipper = (ViewFlipper) findViewById(R.id.viewFlipper);
         mFlipper.setAutoStart(false);
@@ -90,22 +97,23 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view,
                                     int position, long id) {
-                Toast.makeText(getApplicationContext(),
-                        "Click ListItem Number " + position, Toast.LENGTH_LONG)
-                        .show();
+
+                SendProof sendProof = new SendProof(progressDialog,
+                        Singleton.getInstance().getProofList().get(position), alertDialog);
+                try {
+                    sendProof.execute(new URL(getResources().getString(R.string.server_url)));
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                }
             }
         });
 
-        String[] values = new String[] {
-                "Proof 1", "Proof 2", "Proof 3",
-                "Proof 1", "Proof 2", "Proof 3",
-                "Proof 1", "Proof 2", "Proof 3",
-                "Proof 1", "Proof 2", "Proof 3",
-                "Proof 1", "Proof 2", "Proof 3"
-        };
-        final ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.activity_main_proof_list_item, R.id.firstLine, values);
+        String[] values = new String[] {};
+        final ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                R.layout.activity_main_proof_list_item, R.id.firstLine, values);
 
         proofList.setAdapter(adapter);
+        Singleton.getInstance().setProofNameList(proofList);
 
         Log.d("MainActivity", "Checking keypair.");
         checkKeyPairExists();
@@ -207,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.settings_settings:;
+            case R.id.settings_settings:
                 return true;
             case R.id.settings_about:
                 DialogFragment newFragment = new AboutDialogFragment();

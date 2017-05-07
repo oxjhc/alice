@@ -39,6 +39,7 @@ public class ProveLocationActivity extends AppCompatActivity {
         setContentView(R.layout.activity_prove_location);
 
         Intent intent = getIntent();
+
         userKeyName = intent.getStringExtra("userKeyName");
 
         try {
@@ -50,8 +51,8 @@ public class ProveLocationActivity extends AppCompatActivity {
             Log.d(TAG, "Key error.");
         }
 
+
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        wifiManager.
         manager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         channel = manager.initialize(this, getMainLooper(), null);
 

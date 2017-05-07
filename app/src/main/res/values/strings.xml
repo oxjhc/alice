@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Alice</string>
-    <string name="server_url">localhost:8080</string>
+    <string name="server_url">http://10.0.0.2:8080/proof</string>
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_proofs">Proofs</string>
