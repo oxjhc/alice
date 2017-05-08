@@ -43,6 +43,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
     private static final String TAG = "ProveLocationTask";
 
     private final int AP_PORT = 1832;
+    private final int DELAY = 200;
     private final String AP_SERVICE_URN = "urn:schemas-oxjhc-club:service:TeaParty:1";
     private WifiP2pDevice apDevice = null;
 
@@ -125,16 +126,31 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
         manager.requestGroupInfo(channel, new WifiP2pManager.GroupInfoListener() {
             @Override
             public void onGroupInfoAvailable(WifiP2pGroup group) {
+                try {
+                    Thread.sleep(DELAY);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 Log.d(TAG, "Group info is available.");
                 if (group != null) {
                     Log.d(TAG, "Group which previously existed: " + group.getNetworkName());
                     manager.removeGroup(channel, new WifiP2pManager.ActionListener() {
                         @Override
                         public void onSuccess() {
+                            try {
+                                Thread.sleep(DELAY);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                             Log.d(TAG, "Successfully removed group.");
                             manager.createGroup(channel, new WifiP2pManager.ActionListener() {
                                 @Override
                                 public void onSuccess() {
+                                    try {
+                                        Thread.sleep(DELAY);
+                                    } catch (InterruptedException e) {
+                                        e.printStackTrace();
+                                    }
                                     Log.d(TAG, "Successfully created group.");
                                     discoverServiceFromAP();
                                 }
@@ -158,6 +174,11 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                     manager.createGroup(channel, new WifiP2pManager.ActionListener() {
                         @Override
                         public void onSuccess() {
+                            try {
+                                Thread.sleep(DELAY);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                             Log.d(TAG, "Successfully created group.");
                             discoverServiceFromAP();
                         }
@@ -181,10 +202,20 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
         manager.clearServiceRequests(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
+                try {
+                    Thread.sleep(DELAY);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 Log.d(TAG, "Cleared service requests.");
                 manager.addServiceRequest(channel, serviceRequest, new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
+                        try {
+                            Thread.sleep(DELAY);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                         Log.d(TAG, "Added service request");
                         manager.discoverServices(channel, new WifiP2pManager.ActionListener() {
                             @Override
@@ -226,8 +257,12 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
         manager.connect(channel, config, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                String status;
-
+                try {
+                    Thread.sleep(DELAY);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                String status = "";
                 switch (apDevice.status) {
                     case WifiP2pDevice.AVAILABLE:
                         status = "AVAILABLE";
@@ -254,6 +289,11 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                 manager.requestConnectionInfo(channel, new WifiP2pManager.ConnectionInfoListener() {
                     @Override
                     public void onConnectionInfoAvailable(WifiP2pInfo info) {
+                        try {
+                            Thread.sleep(DELAY);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                         InetAddress ownerAddress=info.groupOwnerAddress;
 
                         if (ownerAddress!=null) {
@@ -334,6 +374,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             socket.setSoTimeout(30000);
         } catch (SocketException e) {
             if (socket != null) {
+                socket.disconnect();
                 socket.close();
             }
             Log.d(TAG, "Socket error.");
@@ -354,6 +395,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
         } catch (IOException e) {
             Log.d(TAG, "Error receiving seqids.");
             e.printStackTrace();
+            socket.disconnect();
             socket.close();
             tearDownWifiDirect();
             return null;
@@ -369,6 +411,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             } catch (IOException e) {
                 Log.d(TAG, "URL error.");
                 e.printStackTrace();
+                socket.disconnect();
                 socket.close();
                 tearDownWifiDirect();
                 return null;
@@ -391,6 +434,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                 } catch (IOException e) {
                     Log.d(TAG, "Error receiving seqids.");
                     e.printStackTrace();
+                    socket.disconnect();
                     socket.close();
                     return null;
                 }
@@ -409,6 +453,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
         } catch (Exception e) {
             Log.d(TAG, "Error in getting ping: " + e);
             e.printStackTrace();
+            socket.disconnect();
             socket.close();
             tearDownWifiDirect();
             return null;
@@ -440,6 +485,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
         } catch (IOException e) {
             Log.d(TAG, "Error in getting proof: " + e);
             e.printStackTrace();
+            socket.disconnect();
             socket.close();
             tearDownWifiDirect();
             return null;
@@ -453,7 +499,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
 
     private void tearDownWifiDirect() {
         try {
-            Thread.sleep(100);
+            Thread.sleep(DELAY);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -465,6 +511,11 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
         manager.clearServiceRequests(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
+                try {
+                    Thread.sleep(DELAY);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 Log.d(TAG, "Successfully cleared service requests.");
                 manager.removeGroup(channel, new WifiP2pManager.ActionListener() {
                     @Override
@@ -481,6 +532,11 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
 
             @Override
             public void onFailure(int reason) {
+                try {
+                    Thread.sleep(DELAY);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 logFailureMessage("clear service request", reason);
                 manager.removeGroup(channel, new WifiP2pManager.ActionListener() {
                     @Override
