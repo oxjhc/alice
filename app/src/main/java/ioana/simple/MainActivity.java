@@ -108,9 +108,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        String[] values = new String[] {};
         final ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                R.layout.activity_main_proof_list_item, R.id.firstLine, values);
+                R.layout.activity_main_proof_list_item, R.id.firstLine);
 
         proofList.setAdapter(adapter);
         Singleton.getInstance().setProofNameList(proofList);

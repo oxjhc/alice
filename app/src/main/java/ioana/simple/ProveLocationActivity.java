@@ -1,8 +1,12 @@
 package ioana.simple;
 
 import android.annotation.TargetApi;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.KeyguardManager;
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
@@ -13,6 +17,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -21,13 +27,14 @@ import java.security.PublicKey;
 public class ProveLocationActivity extends AppCompatActivity {
     public static final String TAG = "ProveLocationActivity";
 
+    private AlertDialog.Builder alertDialog;
+
     private String userKeyName;
     private PublicKey publicKey;
     private PrivateKey privateKey;
 
     private WifiP2pManager manager;
     private WifiP2pManager.Channel channel;
-    private WiFiDirectBroadcastReceiver receiver;
 
     private final IntentFilter intentFilter = new IntentFilter();
     private AsyncTask task;
@@ -37,6 +44,8 @@ public class ProveLocationActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_prove_location);
+
+        alertDialog = new AlertDialog.Builder(this);
 
         Intent intent = getIntent();
 
@@ -63,24 +72,11 @@ public class ProveLocationActivity extends AppCompatActivity {
         verifyLocation();
     }
 
-//    @Override
-//    public void onResume() {
-//        super.onResume();
-//        receiver = new WiFiDirectBroadcastReceiver(manager, channel, this);
-//        registerReceiver(receiver, intentFilter);
-//    }
-//
-//    @Override
-//    public void onPause() {
-//        super.onPause();
-//        unregisterReceiver(receiver);
-//    }
-
     public void verifyLocation() {
         task = new ProveLocationTask(
                 manager, wifiManager, channel, publicKey,
                 privateKey, getResources().openRawResource(R.raw.vid),
-                this).execute();
+                alertDialog, this).execute();
     }
 
     @Override

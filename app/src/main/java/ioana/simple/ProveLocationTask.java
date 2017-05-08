@@ -57,6 +57,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
     private PublicKey publicKey;
     private PrivateKey privateKey;
     private ByteString vid;
+    private AlertDialog.Builder builder;
     private Activity activity;
 
     private final Lock lock = new ReentrantLock();
@@ -71,6 +72,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             PublicKey publicKey,
             PrivateKey privateKey,
             InputStream vid,
+            AlertDialog.Builder builder,
             Activity activity) {
         this.manager = manager;
         this.wifiManager = wifiManager;
@@ -82,6 +84,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
         } catch (IOException e) {
             this.vid = null;
         }
+        this.builder = builder;
         this.activity = activity;
     }
 
@@ -401,7 +404,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             e.printStackTrace();
             socket.disconnect();
             socket.close();
-            tearDownWifiDirect();
+            cancel(true);
             return null;
         }
 
@@ -417,7 +420,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                 e.printStackTrace();
                 socket.disconnect();
                 socket.close();
-                tearDownWifiDirect();
+                cancel(true);
                 return null;
             }
 
@@ -440,6 +443,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                     e.printStackTrace();
                     socket.disconnect();
                     socket.close();
+                    cancel(true);
                     return null;
                 }
                 Log.d(TAG, "Creating proof req.");
@@ -459,7 +463,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             e.printStackTrace();
             socket.disconnect();
             socket.close();
-            tearDownWifiDirect();
+            cancel(true);
             return null;
         } finally {
             if (connection != null) {
@@ -491,10 +495,12 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             e.printStackTrace();
             socket.disconnect();
             socket.close();
-            tearDownWifiDirect();
+            cancel(true);
             return null;
         } finally {
             connection.disconnect();
+            socket.disconnect();
+            socket.close();
         }
 
         tearDownWifiDirect();
@@ -637,29 +643,31 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
 
     @Override
     protected void onPostExecute(final ProofProtos.SignedLocnProof o) {
-        if(!o.equals(null)) {
-            AlertDialog sendOrSave = new AlertDialog.Builder(activity)
-                    .setMessage("Do you want to send the proof now or save it for later?")
-                    .setPositiveButton("Send", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            SendProof sendProof = new SendProof(new ProgressDialog(activity),
-                                    o, new AlertDialog.Builder(activity));
-                            try {
-                                sendProof.execute(new URL(
-                                        activity.getResources().getString(R.string.server_url)));
-                            } catch (MalformedURLException e) {
-                                e.printStackTrace();
-                            }
+        if (o != null) {
+            builder
+                .setMessage("Do you want to send the proof now or save it for later?")
+                .setPositiveButton("Send", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        SendProof sendProof = new SendProof(new ProgressDialog(activity),
+                                o, new AlertDialog.Builder(activity));
+                        try {
+                            sendProof.execute(new URL(
+                                    activity.getResources().getString(R.string.server_url)));
+                        } catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        } finally {
+                            activity.finish();
                         }
-                    })
-                    .setNeutralButton("Save", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            Singleton.getInstance().addToList(o);
-                        }
-                    }).show();
+                    }
+                })
+                .setNeutralButton("Save", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Singleton.getInstance().addToList(o);
+                        activity.finish();
+                    }
+                }).show();
         }
-        activity.finish();
     }
 }

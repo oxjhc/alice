@@ -77,6 +77,7 @@ class SendProof extends AsyncTask<URL, Integer, ProofProtos.SignedToken> {
             alertDialog.show();
         } else {
             alertDialog.setTitle("Success!");
+            alertDialog.setMessage("");
             alertDialog.show();
         }
 
