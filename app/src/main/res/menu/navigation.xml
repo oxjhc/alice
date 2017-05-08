@@ -8,11 +8,6 @@
         android:title="@string/title_home" />
 
     <item
-        android:id="@+id/navigation_dashboard"
-        android:icon="@drawable/ic_dashboard_black_24dp"
-        android:title="@string/title_dashboard" />
-
-    <item
         android:id="@+id/navigation_proofs"
         android:icon="@drawable/ic_proof"
         android:title="@string/title_proofs" />

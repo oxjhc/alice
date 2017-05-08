@@ -48,7 +48,6 @@ public class ExampleInstrumentedTest  {
                         .setUnonce(ByteString.EMPTY)
                         .setVaultKey(ByteString.EMPTY))
                 .setSig(ByteString.EMPTY).build();
-        MockContext mc = new MockContext();
         final ArrayAdapter<String> adapter = new ArrayAdapter<>(mActivityRule.getActivity(),
                 R.layout.activity_main_proof_list_item);
         ListView lv = Mockito.mock(ListView.class);

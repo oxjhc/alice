@@ -31,7 +31,7 @@ class SendProof extends AsyncTask<URL, Integer, ProofProtos.SignedToken> {
     }
 
     protected ProofProtos.SignedToken doInBackground(URL... urls) {
-        URL url = urls[0];
+        URL url = urls[0] ;
         HttpURLConnection urlConnection = null;
         try {
             urlConnection = (HttpURLConnection) url.openConnection();
@@ -77,8 +77,6 @@ class SendProof extends AsyncTask<URL, Integer, ProofProtos.SignedToken> {
             alertDialog.show();
         } else {
             alertDialog.setTitle("Success!");
-            alertDialog.setMessage("Welcome to " + token.getToken().getLocnTag().toStringUtf8()
-                    + "!");
             alertDialog.show();
         }
 
