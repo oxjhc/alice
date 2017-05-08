@@ -1,9 +1,14 @@
 package ioana.simple;
 
+import android.annotation.TargetApi;
+import android.os.Build;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import com.google.protobuf.ByteString;
+
 import java.util.Date;
+import java.util.Formatter;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -43,7 +48,8 @@ class Singleton {
         proofList.add(locnProof);
         Date date = new Date(locnProof.getLocnproof().getTime());
         ArrayAdapter adapter = (ArrayAdapter) proofNameList.getAdapter();
-        adapter.add(locnProof.getLocnproof().getApid().toStringUtf8() +" at "
+        ByteString apid = locnProof.getLocnproof().getApid();
+        adapter.add(apid.toString() +" at "
                 + date.toString());
         adapter.notifyDataSetChanged();
     }

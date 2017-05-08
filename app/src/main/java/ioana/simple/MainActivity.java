@@ -5,6 +5,7 @@ import android.app.ActivityOptions;
 import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.security.keystore.KeyGenParameterSpec;
@@ -27,12 +28,22 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.ViewFlipper;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.spec.ECGenParameterSpec;
+import java.util.ArrayList;
+import java.util.List;
+
+import ioana.simple.ProofProtos.SignedLocnProof;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -91,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+
         proofList = (ListView) findViewById(R.id.proofList);
 
         proofList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -114,6 +126,19 @@ public class MainActivity extends AppCompatActivity {
         proofList.setAdapter(adapter);
         Singleton.getInstance().setProofNameList(proofList);
 
+        try {
+            FileInputStream fileInputStream = openFileInput("proofs.txt");
+            ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
+            List<SignedLocnProof> proofs = (List<SignedLocnProof>) objectInputStream.readObject();
+            for(SignedLocnProof proof : proofs) {
+                Singleton.getInstance().addToList(proof);
+            }
+            adapter.notifyDataSetChanged();
+            Log.d("MainActivity", "loaded data from prevoiusly");
+            objectInputStream.close();
+        } catch (ClassNotFoundException | IOException e) {
+            e.printStackTrace();
+        }
         Log.d("MainActivity", "Checking keypair.");
         checkKeyPairExists();
     }
@@ -221,4 +246,20 @@ public class MainActivity extends AppCompatActivity {
                 return super.onOptionsItemSelected(item);
         }
     }
+
+    @Override
+    public void onDestroy() {
+        Log.d("MainActivity", "Destroying");
+        List<SignedLocnProof> proofList =  Singleton.getInstance().getProofList();
+        try {
+            FileOutputStream fileOutputStream = openFileOutput("proofs.txt", this.MODE_PRIVATE);
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
+            objectOutputStream.writeObject(proofList);
+            objectOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        super.onDestroy();
+    }
+
 }
