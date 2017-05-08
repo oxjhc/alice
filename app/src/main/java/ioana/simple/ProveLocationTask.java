@@ -297,7 +297,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
 
     private ProofProtos.SignedLocnProof getPingFromAP() {
         Boolean notElapsed = true;
-        long timeout = TimeUnit.SECONDS.toNanos(100);
+        long timeout = TimeUnit.SECONDS.toNanos(10000);
         lock.lock();
         try {
             while (timeout >= 0 && !ready) {
@@ -581,27 +581,29 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
 
     @Override
     protected void onPostExecute(final ProofProtos.SignedLocnProof o) {
-        AlertDialog sendOrSave = new AlertDialog.Builder(activity)
-                .setMessage("Do you want to send the proof now or save it for later?")
-                .setPositiveButton("Send", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        SendProof sendProof = new SendProof(new ProgressDialog(activity),
-                                o, new AlertDialog.Builder(activity));
-                        try {
-                            sendProof.execute(new URL(
-                                    activity.getResources().getString(R.string.server_url)));
-                        } catch (MalformedURLException e) {
-                            e.printStackTrace();
+        if(!o.equals(null)) {
+            AlertDialog sendOrSave = new AlertDialog.Builder(activity)
+                    .setMessage("Do you want to send the proof now or save it for later?")
+                    .setPositiveButton("Send", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            SendProof sendProof = new SendProof(new ProgressDialog(activity),
+                                    o, new AlertDialog.Builder(activity));
+                            try {
+                                sendProof.execute(new URL(
+                                        activity.getResources().getString(R.string.server_url)));
+                            } catch (MalformedURLException e) {
+                                e.printStackTrace();
+                            }
                         }
-                    }
-                })
-                .setNeutralButton("Save", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Singleton.getInstance().addToList(o);
-                    }
-                }).show();
+                    })
+                    .setNeutralButton("Save", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Singleton.getInstance().addToList(o);
+                        }
+                    }).show();
+        }
         activity.finish();
     }
 }

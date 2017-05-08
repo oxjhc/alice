@@ -163,9 +163,6 @@ public class MainActivity extends AppCompatActivity {
                 case R.id.navigation_home:
                     nextId = R.id.homeView;
                     break;
-                case R.id.navigation_dashboard:
-                    nextId = R.id.dashboardView;
-                    break;
                 case R.id.navigation_proofs:
                     nextId = R.id.proofsView;
                     break;

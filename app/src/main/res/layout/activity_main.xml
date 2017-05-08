@@ -42,24 +42,17 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
 
-                <ImageView
-                    android:id="@+id/imageView"
+                <TextView
+                    android:id="@+id/homeTextView"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    app:srcCompat="@drawable/ic_home_black_24dp" />
-
-            </FrameLayout>
-
-            <FrameLayout
-                android:id="@+id/dashboardView"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-
-                <ImageView
-                    android:id="@+id/imageView2"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    app:srcCompat="@drawable/ic_dashboard_black_24dp" />
+                    android:layout_marginTop="@dimen/fab_margin"
+                    android:layout_marginLeft="@dimen/fab_margin"
+                    android:layout_marginRight="@dimen/fab_margin"
+                    android:textIsSelectable="true"
+                    android:textSize="16sp"
+                    android:textColor="#000000"
+                    android:text="@string/home_message"/>
 
             </FrameLayout>
 
