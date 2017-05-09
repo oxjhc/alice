@@ -73,11 +73,11 @@ class SendProof extends AsyncTask<URL, Integer, ProofProtos.SignedToken> {
 
         if(token.equals(ProofProtos.SignedToken.getDefaultInstance())) {
             alertDialog.setTitle("Error!");
-            alertDialog.setMessage("An error has occurred while sending the proof to the server");
+            alertDialog.setMessage("An error has occurred while sending the proof to the server. Maybe you entered the wrong rabbit hole?");
             alertDialog.show();
         } else {
             alertDialog.setTitle("Success!");
-            alertDialog.setMessage("");
+            alertDialog.setMessage("You are in Wonderland.");
             alertDialog.show();
         }
 

@@ -36,7 +36,7 @@ public class ExampleInstrumentedTest  {
     public void useAppContext() throws Exception {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
-        int time = 100000;
+        int time = 1000;
         String Apid = "AP1";
         ProofProtos.SignedLocnProof locnProof = ProofProtos.SignedLocnProof.newBuilder()
                 .setLocnproof(ProofProtos.LocnProof.newBuilder()

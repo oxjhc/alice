@@ -7,6 +7,7 @@ import android.app.DialogFragment;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
@@ -28,21 +29,24 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.ViewFlipper;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
+
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.spec.ECGenParameterSpec;
-import java.util.ArrayList;
-import java.util.List;
-
 import ioana.simple.ProofProtos.SignedLocnProof;
 
 
@@ -59,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private ListView proofList;
     private ProgressDialog progressDialog;
     private android.app.AlertDialog.Builder alertDialog;
+    private ArrayAdapter<String> adapter;
 
     private final String USER_KEY_NAME = "userKey";
     private KeyPair keyPair = null;
@@ -102,7 +107,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         proofList = (ListView) findViewById(R.id.proofList);
 
         proofList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -120,25 +124,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        final ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+        adapter = new ArrayAdapter<>(this,
                 R.layout.activity_main_proof_list_item, R.id.firstLine);
 
         proofList.setAdapter(adapter);
         Singleton.getInstance().setProofNameList(proofList);
 
-        try {
-            FileInputStream fileInputStream = openFileInput("proofs.txt");
-            ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
-            List<SignedLocnProof> proofs = (List<SignedLocnProof>) objectInputStream.readObject();
-            for(SignedLocnProof proof : proofs) {
-                Singleton.getInstance().addToList(proof);
-            }
-            adapter.notifyDataSetChanged();
-            Log.d("MainActivity", "loaded data from prevoiusly");
-            objectInputStream.close();
-        } catch (ClassNotFoundException | IOException e) {
-            e.printStackTrace();
-        }
         Log.d("MainActivity", "Checking keypair.");
         checkKeyPairExists();
     }
@@ -236,8 +227,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.settings_settings:
-                return true;
             case R.id.settings_about:
                 DialogFragment newFragment = new AboutDialogFragment();
                 newFragment.show(getFragmentManager(), "about");
@@ -247,19 +236,56 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    public void onDestroy() {
-        Log.d("MainActivity", "Destroying");
-        List<SignedLocnProof> proofList =  Singleton.getInstance().getProofList();
-        try {
-            FileOutputStream fileOutputStream = openFileOutput("proofs.txt", this.MODE_PRIVATE);
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream);
-            objectOutputStream.writeObject(proofList);
-            objectOutputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        super.onDestroy();
-    }
+//    @Override
+//    protected void onResume() {
+//        super.onResume();
+//
+//        final Singleton sing = Singleton.getInstance();
+//
+//        final SharedPreferences sharedPreferences = getPreferences(Context.MODE_PRIVATE);
+//        final SharedPreferences.Editor editor = sharedPreferences.edit();
+//
+//        if (sing.getProofList().size() > 0) {
+//            final SignedLocnProof slp = sing.getProofList().get(sing.getProofList().size()-1);
+//            editor.putString(sing.getNameMap().get(slp.hashCode()), slp.toByteString().toStringUtf8());
+//            Log.d("MainActivity", "Added the previously made proof.");
+//            editor.apply();
+//        }
+//
+//        sing.clearAll();
+//
+//        Log.d("MainActivity", "Prefs are: " + sharedPreferences.getAll());
+//
+//        for (String nickname : sharedPreferences.getAll().keySet()) {
+//            try {
+//                Singleton.getInstance().addToList(SignedLocnProof.parseFrom(ByteString.copyFrom(sharedPreferences.getString(nickname, ""), "UTF-16BE")), nickname);
+//            } catch (InvalidProtocolBufferException e) {
+//                e.printStackTrace();
+//            } catch (UnsupportedEncodingException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//    }
+//
+//    @Override
+//    public void onPause() {
+//        super.onPause();
+//        Log.d("MainActivity", "Destroying");
+//
+//        final SharedPreferences.Editor sharedPreferences = getPreferences(Context.MODE_PRIVATE).edit();
+//
+//        Singleton sing = Singleton.getInstance();
+//        for (SignedLocnProof slp : sing.getProofList()) {
+//            try {
+//                sharedPreferences.putString(sing.getNameMap().get(slp.hashCode()), slp.toByteString().toString("UTF-16BE"));
+//                Log.d("MainActivity", SignedLocnProof.parseFrom(ByteString.copyFrom(slp.toByteString().toString("UTF-16BE"), "UTF-16BE")).toString());
+//            } catch (UnsupportedEncodingException e) {
+//                e.printStackTrace();
+//            } catch (InvalidProtocolBufferException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//        sharedPreferences.apply();
+//    }
 
 }

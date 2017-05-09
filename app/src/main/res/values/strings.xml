@@ -7,8 +7,7 @@
     <string name="title_settings">Settings</string>
     <string name="title_about">About</string>
     <string name="title_activity_settings">Settings</string>
-    <string name="home_message">Welcome to Alice! \n\n
-        To prove your location, press the round button in the corner. You will have an option between sending to the verifier it right away and saving for later.\n\n
-        To see a history of your proofs, go to the Proofs tab. In order to send the proof the verifier, just select an item in your list.
+    <string name="home_title">Welcome to Wonderland!</string>
+    <string name="home_message">To prove your location, press the round button in the corner. You will have the option between sending it to the verifier right away and saving for later.\n\nTo see a history of your proofs, go to the Proofs tab. In order to send the proof the verifier, just select an item in your list.
     </string>
 </resources>

@@ -7,8 +7,11 @@ import android.widget.ListView;
 
 import com.google.protobuf.ByteString;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Formatter;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -16,9 +19,11 @@ class Singleton {
     private static Singleton mInstance = null;
     private ListView proofNameList;
     private List<ProofProtos.SignedLocnProof> proofList;
+    private HashMap<Integer, String> nameMap;
 
     private Singleton() {
         proofList = new LinkedList<>();
+        nameMap = new HashMap<>();
     }
 
     static Singleton getInstance(){
@@ -26,6 +31,13 @@ class Singleton {
             mInstance = new Singleton();
         }
         return mInstance;
+    }
+
+    public void clearAll() {
+        proofList.clear();
+        nameMap.clear();
+        ArrayAdapter<String> adapter = (ArrayAdapter<String>) proofNameList.getAdapter();
+        adapter.clear();
     }
 
     List<ProofProtos.SignedLocnProof> getProofList() {
@@ -44,13 +56,16 @@ class Singleton {
         this.proofNameList = proofNameList;
     }
 
-    void addToList(ProofProtos.SignedLocnProof locnProof) {
+    public HashMap<Integer, String> getNameMap() {
+        return nameMap;
+    }
+
+    void addToList(ProofProtos.SignedLocnProof locnProof, String name) {
         proofList.add(locnProof);
-        Date date = new Date(locnProof.getLocnproof().getTime());
+        Date date = new Date(1000 * locnProof.getLocnproof().getTime());
         ArrayAdapter adapter = (ArrayAdapter) proofNameList.getAdapter();
-        ByteString apid = locnProof.getLocnproof().getApid();
-        adapter.add(apid.toString() +" at "
-                + date.toString());
+        adapter.add(name +" at "+ new SimpleDateFormat("dd/MM/yyyy HH:mm").format(date));
+        nameMap.put(locnProof.hashCode(), name);
         adapter.notifyDataSetChanged();
     }
 }

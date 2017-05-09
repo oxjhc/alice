@@ -1,5 +1,6 @@
 package ioana.simple;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -14,6 +15,7 @@ import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pUpnpServiceRequest;
 import android.os.AsyncTask;
 import android.util.Log;
+import android.widget.EditText;
 
 import com.google.protobuf.ByteString;
 
@@ -38,6 +40,7 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -58,7 +61,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
     private PrivateKey privateKey;
     private ByteString vid;
     private AlertDialog.Builder builder;
-    private Activity activity;
+    private ProveLocationActivity activity;
 
     private final Lock lock = new ReentrantLock();
     private final Condition pingCond = lock.newCondition();
@@ -73,7 +76,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             PrivateKey privateKey,
             InputStream vid,
             AlertDialog.Builder builder,
-            Activity activity) {
+            ProveLocationActivity activity) {
         this.manager = manager;
         this.wifiManager = wifiManager;
         this.channel = channel;
@@ -165,7 +168,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                                 @Override
                                 public void onFailure(int reason) {
                                     logFailureMessage("create group", reason);
-                                    tearDownWifiDirect();
+                                    cancel(true);
                                 }
                             });
                         }
@@ -173,7 +176,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                         @Override
                         public void onFailure(int reason) {
                             logFailureMessage("remove group", reason);
-                            tearDownWifiDirect();
+                            cancel(true);
                         }
                     });
                 } else {
@@ -193,7 +196,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                         @Override
                         public void onFailure(int reason) {
                             logFailureMessage("create group", reason);
-                            tearDownWifiDirect();
+                            cancel(true);
                         }
                     });
                 }
@@ -234,7 +237,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                             @Override
                             public void onFailure(int reason) {
                                 logFailureMessage("discover servives", reason);
-                                tearDownWifiDirect();
+                                cancel(true);
                             }
                         });
                     }
@@ -242,7 +245,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                     @Override
                     public void onFailure(int reason) {
                         logFailureMessage("add service request", reason);
-                        tearDownWifiDirect();
+                        cancel(true);
                     }
                 });
             }
@@ -250,7 +253,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             @Override
             public void onFailure(int reason) {
                 logFailureMessage("clear service requests", reason);
-                tearDownWifiDirect();
+                cancel(true);
             }
         });
     }
@@ -307,7 +310,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                             Log.d(TAG, "Group owner address: " + ownerAddress.toString());
                         } else {
                             Log.d(TAG, "Connection failed! Try again!");
-                            tearDownWifiDirect();
+                            cancel(true);
                             return;
                         }
 
@@ -315,7 +318,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
                             Log.d(TAG, "Group formed.");
                         } else {
                             Log.d(TAG, "Failed to form group.");
-                            tearDownWifiDirect();
+                            cancel(true);
                             return;
                         }
 
@@ -333,7 +336,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             @Override
             public void onFailure(int reason) {
                 logFailureMessage("connect to AP", reason);
-                tearDownWifiDirect();
+                cancel(true);
             }
         });
     }
@@ -386,7 +389,7 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
             }
             Log.d(TAG, "Socket error.");
             e.printStackTrace();
-            tearDownWifiDirect();
+            cancel(true);
             return null;
         }
 
@@ -640,31 +643,37 @@ class ProveLocationTask extends AsyncTask<Void, Void, ProofProtos.SignedLocnProo
         tearDownWifiDirect();
         activity.finish();
     }
-
+    @TargetApi(21)
     @Override
-    protected void onPostExecute(final ProofProtos.SignedLocnProof o) {
-        if (o != null) {
+    protected void onPostExecute(final ProofProtos.SignedLocnProof locnProof) {
+        if (locnProof != null) {
             builder
-                .setMessage("Do you want to send the proof now or save it for later?")
                 .setPositiveButton("Send", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        SendProof sendProof = new SendProof(new ProgressDialog(activity),
-                                o, new AlertDialog.Builder(activity));
+                        SendProof sendProof = new SendProof(activity.sendProgress,
+                                locnProof, activity.sendDialog);
                         try {
                             sendProof.execute(new URL(
                                     activity.getResources().getString(R.string.server_url)));
+                            sendProof.get();
                         } catch (MalformedURLException e) {
                             e.printStackTrace();
-                        } finally {
-                            activity.finish();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        } catch (ExecutionException e) {
+                            e.printStackTrace();
                         }
+
+                        activity.finish();
                     }
                 })
                 .setNeutralButton("Save", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Singleton.getInstance().addToList(o);
+                        String proofName = activity.nickname.getText().toString();
+                        Log.d(TAG, "For proof name, got: " + proofName);
+                        Singleton.getInstance().addToList(locnProof, proofName);
                         activity.finish();
                     }
                 }).show();

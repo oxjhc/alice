@@ -13,9 +13,13 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutCompat;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.ViewGroup;
+import android.widget.EditText;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -28,6 +32,9 @@ public class ProveLocationActivity extends AppCompatActivity {
     public static final String TAG = "ProveLocationActivity";
 
     private AlertDialog.Builder alertDialog;
+    public EditText nickname;
+    public AlertDialog.Builder sendDialog;
+    public ProgressDialog sendProgress;
 
     private String userKeyName;
     private PublicKey publicKey;
@@ -45,7 +52,22 @@ public class ProveLocationActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_prove_location);
 
-        alertDialog = new AlertDialog.Builder(this);
+        nickname = new EditText(this);
+        nickname.setHint("Proof name");
+
+        LinearLayoutCompat.LayoutParams lp = new LinearLayoutCompat.LayoutParams(
+                LinearLayoutCompat.LayoutParams.MATCH_PARENT,
+                LinearLayoutCompat.LayoutParams.MATCH_PARENT);
+        lp.setMarginEnd(24);
+        lp.setMarginStart(24);
+        nickname.setLayoutParams(lp);
+
+        alertDialog = new AlertDialog.Builder(this).setView(nickname);
+        alertDialog.setTitle("Proof created");
+        alertDialog.setMessage("Do you want to send the proof now or save it for later?");
+
+        sendProgress = new ProgressDialog(this);
+        sendDialog = new AlertDialog.Builder(this);
 
         Intent intent = getIntent();
 
